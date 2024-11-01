@@ -75,37 +75,63 @@ DOCKER
       host> docker run --name elsa -it -v `pwd`:/var/data/ labx-elsa 
       elsa> lsa_compute --help
 
-INSTALL
+INSTALLATION
 -----------------
 
+The package can be installed in several ways:
 
-    (1). # for use #
+1. Using pip (recommended):
 
-    First, install the prerequisites: C++ (build-essential), Python(dev), 
-    conda, numpy, scipy and matplotlib as specified in setup.py,
-    create and activate a virtual env named elsa. 
+.. code-block:: bash
 
-    Same for Linux, Mac OS, Windows Subsystem Linux, with a Conda-like Virtual Env
+    pip install .
 
-    Then, download and unzip the latest master branch to the elsa folder.
+2. Using setup.py directly (legacy method):
 
-    ::
+.. code-block:: bash
 
-        elsa>  pip install .                            # or python setup.py install
-        elsa>  cd test && . test.sh                     # a test script is available
+    python setup.py install
 
+3. For development installation:
 
-    (2). # for development #
+.. code-block:: bash
 
-    eLSA is open source and your contributions are greatly welcome.
+    pip install -e .
 
-    First, use git to fork a copy of elsa on github.com:
+Requirements
+-----------
+- Python >= 3.6
+- numpy >= 1.20.0
+- scipy >= 1.6.0
+- matplotlib >= 3.3.0
 
-    ::
-        
-        elsa> git clone ssh://git@github.com/your/elsa elsa
+Usage
+-----
+After installation, the following commands will be available:
 
-    Then, make your edits and create a pull request to merge back.
+LSA Commands:
+~~~~~~~~~~~~
+- lsa_compute
+- lsa_query
+- lsa_infer
+- lsa_sim
+- lsa_totrend
+- lsa_para
+- lsa_chkdat
+- lsa_fixqv
+- lsa_version
+
+LLA Commands:
+~~~~~~~~~~~~
+- lla_compute
+- lla_query
+
+For detailed usage of each command, use the --help flag:
+
+.. code-block:: bash
+
+    lla_compute --help
+    lla_query --help
 
 EXECUTABLES
 --------------------

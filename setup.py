@@ -48,14 +48,25 @@ doclines=__doc__.splitlines()
 print("works with python setup.py install or pipx install .", file=sys.stderr)
 
 print("testing git availability ...", file=sys.stderr)
-git_on_cmd = "echo 'def main():\n\t print('\\\"'$(cat VERSION.txt); @GIT: $(git log --pretty=format:'%h' | head -n 1)')\\\" > lsa/lsa_version.py"
+git_on_cmd = """echo 'def main():\\n    print(\\\"{}; @GIT: {}\\\")' > lsa/lsa_version.py""".format(
+    open('VERSION.txt').read().strip(),
+    subprocess.check_output(['git', 'log', '--pretty=format:%h', '-n', '1'], 
+                          stderr=subprocess.DEVNULL).decode().strip()
+)
+
 try:
-    subprocess.check_call(git_on_cmd, shell=True)
+    # Try using git command
+    subprocess.check_output(['git', '--version'], stderr=subprocess.DEVNULL)
+    with open('lsa/lsa_version.py', 'w') as f:
+        git_hash = subprocess.check_output(['git', 'log', '--pretty=format:%h', '-n', '1'],
+                                         stderr=subprocess.DEVNULL).decode().strip()
+        version = open('VERSION.txt').read().strip()
+        f.write(f"def main():\n    print('{version}; @GIT: {git_hash}')\n")
     print("Git commit number included in version info.", file=sys.stderr)
-except subprocess.CalledProcessError:
+except (subprocess.CalledProcessError, FileNotFoundError):
     print("Git not available. Skipping commit number in version info.", file=sys.stderr)
     with open('lsa/lsa_version.py', 'w') as f:
-        f.write("def main():\n\tprint('{}')".format(open('VERSION.txt').read().strip()))
+        f.write(f"def main():\n    print('{open('VERSION.txt').read().strip()}')\n")
 
 if os.path.exists('MANIFEST'): os.remove('MANIFEST')
 
@@ -87,7 +98,8 @@ class my_build(build.build):
         ('build_scripts', build.build.has_scripts),
     ]
 
-setup(name="lsa",
+setup(
+    name="lsa",
     version="2.0.0",
     description=doclines[0],
     long_description="\n".join(doclines[2:]),
@@ -96,36 +108,44 @@ setup(name="lsa",
     url="http://github.com/labxscut/elsa",
     license="BSD",
     platforms=["Linux"],
-    packages=find_packages(exclude=['ez_setup', 'test', 'doc']),
+    packages=['lsa', 'lla'],
     include_package_data=True,
     zip_safe=False,
+    python_requires='>=3.6',
     install_requires=[
-        'numpy>=1.20.0',  # Updated to a version that supports the new float dtypes
-        'scipy>=1.6.0',  # Ensure this version or higher is available
+        'numpy>=1.20.0',
+        'scipy>=1.6.0',
         'matplotlib>=3.3.0',
-        # Add other dependencies as needed
     ],
-    provides=['lsa'],
-    ext_modules = [Extension('lsa._compcore', sources = ['lsa/compcore_wrap.cpp', 'lsa/compcore.cpp'],
-                                              depends = ['lsa/compcore.hpp'],
-                   )],
-    #ext_modules = [Extension('lsa._compcore', sources = ['lsa/compcore.i', 'lsa/compcore.cpp'],
-    #                               depends=['lsa/compcore.hpp'],
-    #                               swig_opts=['-c++', '-nomodern', '-classic', '-nomodernargs'])],
-    py_modules = ['lsa.compcore', 'lsa.lsalib_core', 'lsa.lsalib_stats', 'lsa.lsalib_normalization', 'lsa.lsalib_analysis', 'lsa.lsalib_utils', 'lsa.lsaio'],
-    cmdclass = {'build': my_build},
-    data_files = [('',['README.rst','LICENSE.txt','VERSION.txt'])],
-    entry_points = { 
+    provides=['lsa', 'lla'],
+    ext_modules=[Extension('lsa._compcore',
+                         sources=['lsa/compcore_wrap.cpp', 'lsa/compcore.cpp'],
+                         depends=['lsa/compcore.hpp'],
+                         )],
+    py_modules=[
+        'lsa.compcore',
+        'lsa.lsalib_core',
+        'lsa.lsalib_stats',
+        'lsa.lsalib_normalization',
+        'lsa.lsalib_analysis',
+        'lsa.lsalib_utils',
+        'lsa.lsaio',
+    ],
+    cmdclass={'build': my_build},
+    data_files=[('', ['README.rst', 'LICENSE.txt', 'VERSION.txt'])],
+    entry_points={
         'console_scripts': [
-            'lsa_compute = lsa.lsa_compute:main',
-            'lsa_query = lsa.lsa_query:main',
-            'lsa_infer = lsa.lsa_infer:main',
-            'lsa_sim = lsa.lsa_sim:main',
-            'lsa_totrend = lsa.lsa_totrend:main',
-            'lsa_para = lsa.lsa_para:main',
-			'lsa_chkdat = lsa.lsa_chkdat:main',
-			'lsa_fixqv = lsa.lsa_fixqv:main',
-			'lsa_version = lsa.lsa_version:main'
+            'lsa_compute=lsa.lsa_compute:main',
+            'lsa_query=lsa.lsa_query:main',
+            'lsa_infer=lsa.lsa_infer:main',
+            'lsa_sim=lsa.lsa_sim:main',
+            'lsa_totrend=lsa.lsa_totrend:main',
+            'lsa_para=lsa.lsa_para:main',
+            'lsa_chkdat=lsa.lsa_chkdat:main',
+            'lsa_fixqv=lsa.lsa_fixqv:main',
+            'lsa_version=lsa.lsa_version:main',
+            'lla_compute=lla.lla_compute:main',
+            'lla_query=lla.lla_query:main'
         ]
     },
 )
