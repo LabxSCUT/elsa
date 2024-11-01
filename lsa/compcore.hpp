@@ -50,7 +50,7 @@ public:
   VectorDouble X;
   VectorDouble Y;
   VectorDouble Z;
-  LLA_Data(){ VectorDouble X; VectorDouble Y; VectorDouble Z; max_shift=std::numeric_limits<int>::infinity(); };
+  //LLA_Data(){ VectorDouble X; VectorDouble Y; VectorDouble Z; max_shift=std::numeric_limits<int>::infinity(); };
   LLA_Data(int shift, VectorDouble x, VectorDouble y, VectorDouble z): max_shift(shift),X(x),Y(y),Z(z){ };
   //inline int random_shuffle();
 };
