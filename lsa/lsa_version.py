@@ -1,2 +1,2 @@
 def main():
-    print('v2.0.1; @GIT: 22f65f8')
+    print('v2.0.1')
