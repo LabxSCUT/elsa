@@ -153,15 +153,15 @@ def applyLA(inputData, scoutVars, factorLabels, bootCI=.95, bootNum=1000, minOcc
                     [f"{v:.{disp_decimal}f}" if isinstance(v, float) else v for v in row[3:]]), 
               file=resultFile)
 
-def singleLA(series1, series2, series3, fTransform, zNormalize):
-    return compcore.calc_LA(zNormalize(fTransform(series1)),zNormalize(fTransform(series2)),zNormalize(fTransform(series3)))
-
-def calc_LA(series1, series2, series3):
+def calc_LA(series1, series2, series3):     # the function to calculate LA score
     n1 = len(series1)
     n2 = len(series2)
     n3 = len(series3)
     assert n1==n2 and n2 == n3
     return np.sum(series1*series2*series3)/n1
+
+def singleLA(series1, series2, series3, fTransform, zNormalize): # calculate normalized LA score
+    return calc_LA(zNormalize(fTransform(series1)),zNormalize(fTransform(series2)),zNormalize(fTransform(series3)))
 
 def LAbootstrapCI(series1, series2, series3, LA_score, bootCI, bootNum, fTransform, zNormalize, debug=0):
     ### no feasible, skipping bootstraping
@@ -170,10 +170,10 @@ def LAbootstrapCI(series1, series2, series3, LA_score, bootCI, bootNum, fTransfo
 
     BS_set = np.zeros(bootNum, dtype='float')
     for i in range(0, bootNum):
-        Xb = np.ma.array([ sample_wr(series1[:,j], series1.shape[0]) for j in range(0,series1.shape[1]) ]).T
-        Yb = np.ma.array([ sample_wr(series2[:,j], series2.shape[0]) for j in range(0,series2.shape[1]) ]).T
-        Zb = np.ma.array([ sample_wr(series3[:,j], series3.shape[0]) for j in range(0,series3.shape[1]) ]).T
-        BS_set[i] = compcore.calc_LA(Xb, Yb, Zb)
+        Xb = np.ma.array([ lsalib.sample_wr(series1[:,j], series1.shape[0]) for j in range(0,series1.shape[1]) ]).T
+        Yb = np.ma.array([ lsalib.sample_wr(series2[:,j], series2.shape[0]) for j in range(0,series2.shape[1]) ]).T
+        Zb = np.ma.array([ lsalib.sample_wr(series3[:,j], series3.shape[0]) for j in range(0,series3.shape[1]) ]).T
+        BS_set[i] = calc_LA(Xb, Yb, Zb)
     BS_set.sort()                                 #from smallest to largest
     BS_mean = np.mean(BS_set)
     return ( BS_mean, BS_set[np.floor(bootNum*a1)-1], BS_set[np.ceil(bootNum*a2)-1] )
@@ -185,7 +185,7 @@ def LApermuPvalue(series1, series2, series3, pvalueMethod, LA_score, fTransform,
     Z = np.ma.array(series3)                                               #use = only assigns reference, must use a constructor
     for i in range(0, pvalueMethod):
         np.random.shuffle(Z.T)
-        PP_set[i] = compcore.calc_LA(X, Y, zNormalize(fTransform(Z)))
+        PP_set[i] = calc_LA(X, Y, zNormalize(fTransform(Z)))
     if LA_score >= 0:
         P_two_tail = np.sum(np.abs(PP_set) >= LA_score)/float(pvalueMethod)
     else:
@@ -305,7 +305,9 @@ def applyLLAnalysis(cleanData, factorLabels, delayLimit=3, bootCI=.95, bootNum=1
                                                    fTransform, zNormalize)
                 else:
                     Sl, Su = LA_score, LA_score
-                
+               
+                trace_length = getLLATraceLength(X, Y, Z, delayLimit)
+                best_delay = trace_length - 1 if trace_length > 0 else 0
                 laTable.append([Xi, Yi, Zi, LA_score, Sl, Su, laP, best_delay])
     
     # Calculate q-values
@@ -386,3 +388,27 @@ def LLAbootstrapCI(X, Y, Z, LA_score, delayLimit, bootCI, bootNum, fTransform, z
     a1 = (1 - bootCI) / 2.0
     a2 = bootCI + (1 - bootCI) / 2.0
     return (LA_score, BS_set[int(np.floor(bootNum * a1))], BS_set[int(np.ceil(bootNum * a2))])
+
+def getLLATraceLength(X, Y, Z, delayLimit):
+    """
+    Get the length of the optimal alignment trace from DP_lla algorithm.
+    
+    Args:
+        X, Y, Z (np.array): Input sequences
+        delayLimit (int): Maximum allowed delay between sequences
+        
+    Returns:
+        int: Length of the optimal alignment trace
+    """
+    try:
+        # Create LLA_Data object
+        lla_data = compcore.LLA_Data(delayLimit, X, Y, Z)
+        
+        # Run DP_lla with keep_trace=True to ensure trace is computed
+        lla_result = compcore.DP_lla(lla_data, True)
+        
+        # Return the length of the trace vector
+        return len(lla_result.trace)
+    except Exception as e:
+        print(f"Error getting trace length: {str(e)}", file=sys.stderr)
+        return 0

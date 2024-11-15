@@ -18,7 +18,7 @@ typedef vector<VectorInt> MatrixInt;
 
 //easy functions
 int test();
-double calc_LA(VectorDouble, VectorDouble, VectorDouble);
+//double calc_LA(VectorDouble, VectorDouble, VectorDouble);
 
 //// LSA section
 
@@ -27,7 +27,7 @@ public:
   int max_shift;
   VectorDouble X;
   VectorDouble Y;
-  LSA_Data(){ VectorDouble X; VectorDouble Y; max_shift=std::numeric_limits<int>::infinity(); };
+  LSA_Data(){ VectorDouble X; VectorDouble Y; max_shift=std::numeric_limits<int>::max(); };
   LSA_Data(int shift, VectorDouble x, VectorDouble y): max_shift(shift),X(x),Y(y){ };
   void assign(int, VectorDouble, VectorDouble);
 };
@@ -43,24 +43,85 @@ public:
 LSA_Result DP_lsa( const LSA_Data&, bool ); 
 
 
-//// LLA and LA data types
+//// LLA section
 class LLA_Data {
 public:
+  // Member variables
   int max_shift;
   VectorDouble X;
   VectorDouble Y;
   VectorDouble Z;
-  //LLA_Data(){ VectorDouble X; VectorDouble Y; VectorDouble Z; max_shift=std::numeric_limits<int>::infinity(); };
+  // Default Constructor. Initialize with default values
+  LLA_Data(){max_shift = std::numeric_limits<int>::max(); VectorDouble X; VectorDouble Y; VectorDouble Z; };
+  // Construct with parameters
   LLA_Data(int shift, VectorDouble x, VectorDouble y, VectorDouble z): max_shift(shift),X(x),Y(y),Z(z){ };
-  //inline int random_shuffle();
 };
 
 
 class LLA_Result {
 public:
-  double score;
-  MatrixInt trace;
+    double score;
+    MatrixInt trace;
+    
+    // Add constructor
+    LLA_Result() : score(0.0) {}
 };
+
+// Add documentation
+/**
+ * Performs dynamic programming for Liquid Local Association analysis
+ * @param data Input data containing X, Y, Z sequences and max_shift
+ * @param keep_trace Whether to keep alignment trace
+ * @return LLA_Result containing score and optional trace
+ * @throws std::invalid_argument if input data is invalid
+ */
+
+// Update function declaration to match new implementation
+LLA_Result DP_lla(const LLA_Data& data, bool keep_trace = true); 
+
+
+/// Potential improvements? encapsulation
+/*
+class LLA_Data {
+public:
+    // Constructor
+    LLA_Data(int shift, VectorDouble x, VectorDouble y, VectorDouble z)
+        : max_shift(shift), X(std::move(x)), Y(std::move(y)), Z(std::move(z)) 
+    { }
+
+    // Add getters for encapsulation
+    int getMaxShift() const { return max_shift; }
+    const VectorDouble& getX() const { return X; }
+    const VectorDouble& getY() const { return Y; }
+    const VectorDouble& getZ() const { return Z; }
+
+private:  // Make members private for better encapsulation
+    int max_shift;
+    VectorDouble X;
+    VectorDouble Y;
+    VectorDouble Z;
+};
+*/
+
+/// using examples
+/*
+// Creating vectors
+VectorDouble x = {1.0, 2.0, 3.0};
+VectorDouble y = {4.0, 5.0, 6.0};
+VectorDouble z = {7.0, 8.0, 9.0};
+
+// Creating LLA_Data object
+LLA_Data data(5, x, y, z);
+
+// Using the data
+// Current way (with public members):
+double first_x = data.X[0];
+
+// Better way (with suggested improvements):
+double first_x = data.getX()[0];
+*/
+
+
 
 /*
 class LA_Result {

@@ -589,14 +589,14 @@ def storeyQvalue(pvalues, lam=np.arange(0,Q_lam_max,Q_lam_step), method='smoothe
 def simpleAverage(tseries):
   """ simple averaging 
 
-    Args:
-      tseries(np.ma.array):  one 2d time series (masked array) with replicates, each row is a replicate
+  Args:
+    tseries (np.ma.array): A 2D masked array where each row is a replicate.
 
-    Reterns:
-      (1d np.ma.array) one row with replicates averaged
+  Returns:
+    np.ma.array: A 1D array containing the average of each time point across replicates.
 
-    Note:
-      if nan in tseries, it is treated as zeros, this will happen if fTransform before zNormalize
+  Note:
+    if nan in tseries, it is treated as zeros, this will happen if fTransform before zNormalize
   """
   #print "data=", tseries
   #print "simpleAverage=", np.ma.average(tseries, axis=0)
