@@ -21,21 +21,13 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install pip requirements
-RUN apt-get update && apt-get install -y \
-    python3-numpy \
-    python3-scipy \
-    python3-matplotlib \
-    python3-pandas \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install the package
+# Set work directory
 WORKDIR /app
+# Copy the current directory contents into the container at /app
 COPY . /app
-RUN pip install pybind11 \
-    && pip install .
 
-# Change to the test folder and run test.sh
-WORKDIR /app/test
-RUN chmod +x test.sh
-RUN ./test.sh
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install the ELSA package
+RUN pip install -e .
