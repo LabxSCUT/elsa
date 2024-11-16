@@ -17,9 +17,8 @@ def singleLSA(series1, series2, delayLimit, fTransform, zNormalize, trendThresh=
         xSeries = zNormalize(fTransform(series1))
         ySeries = zNormalize(fTransform(series2))
 
-    lsad = compcore.LSA_Data(delayLimit, xSeries, ySeries)
+    lsad = compcore.LSA_Data(delayLimit, xSeries.tolist(), ySeries.tolist())
     lsar = compcore.DP_lsa(lsad, keepTrace)
-    del lsad
     return lsar
 
 def bootstrapCI(series1, series2, Smax, delayLimit, bootCI, bootNum, fTransform, zNormalize, trendThresh=None, debug=0):
@@ -37,7 +36,7 @@ def bootstrapCI(series1, series2, Smax, delayLimit, bootCI, bootNum, fTransform,
         xBoot = xSeries[bootIndex, :]
         yBoot = ySeries[bootIndex, :]
         
-        lsad = compcore.LSA_Data(delayLimit, xBoot, yBoot)
+        lsad = compcore.LSA_Data(delayLimit, xBoot.tolist(), yBoot.tolist())
         lsar = compcore.DP_lsa(lsad, False)
         bootResults.append(lsar.score)
 
@@ -56,7 +55,7 @@ def permuPvalue(series1, series2, delayLimit, precisionP, Smax, fTransform, zNor
         xSeries = zNormalize(fTransform(series1))
         ySeries = zNormalize(fTransform(series2))
 
-    lsad = compcore.LSA_Data(delayLimit, xSeries, ySeries)
+    lsad = compcore.LSA_Data(delayLimit, xSeries.tolist(), ySeries.tolist())
     lsar = compcore.DP_lsa(lsad, False)
     
     permResults = []
@@ -65,7 +64,7 @@ def permuPvalue(series1, series2, delayLimit, precisionP, Smax, fTransform, zNor
         xPerm = xSeries[permIndex, :]
         yPerm = ySeries
         
-        lsad_perm = compcore.LSA_Data(delayLimit, xPerm, yPerm)
+        lsad_perm = compcore.LSA_Data(delayLimit, xPerm.tolist(), yPerm.tolist())
         lsar_perm = compcore.DP_lsa(lsad_perm, False)
         permResults.append(lsar_perm.score)
 

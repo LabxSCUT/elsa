@@ -266,13 +266,18 @@ def applyLLAnalysis(cleanData, factorLabels, delayLimit=3, bootCI=.95, bootNum=1
                 
                 # Call DP_LLA from compcore
                 try:
-                    # Construct the LLA_Data object with X, Y, Z
-                    lla_data = compcore.LLA_Data(delayLimit, X, Y, Z)
+                    # Convert numpy arrays to lists for PyBind11
+                    X_list = X.tolist()
+                    Y_list = Y.tolist()
+                    Z_list = Z.tolist()
                     
-                    # Call the DP_lla function with the constructed data
-                    lla_result = compcore.DP_lla(lla_data)
+                    # Create LLA_Data object using new PyBind11 constructor
+                    lla_data = compcore.LLA_Data(delayLimit, X_list, Y_list, Z_list)
                     
-                    # Extract the score and best delay from the result
+                    # Call DP_lla with the new object
+                    lla_result = compcore.DP_lla(lla_data, True)  # True to keep trace
+                    
+                    # Extract results
                     LA_score = lla_result.score
                     trace = lla_result.trace
                 except Exception as e:

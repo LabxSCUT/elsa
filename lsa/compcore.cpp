@@ -1,11 +1,13 @@
 #include "compcore.hpp"
+using namespace std;
 
-//// LSA section
+/* Test section */
 int test(){
   cout<<"tested";
   return 0;
 }
 
+/* LSA section */
 void LSA_Data::assign(int shift, VectorDouble x, VectorDouble y){
   max_shift = shift;
   X.assign(x.begin(),x.end());
@@ -68,8 +70,7 @@ LSA_Result DP_lsa( const LSA_Data& data, bool keep_trace ){  //python does not s
   return lsa_result;
 }
 
-
-/// LLA section
+/* LLA section */
 //definition of functions
 LLA_Result DP_lla(const LLA_Data& data, bool keep_trace) {
     // Initialize result
@@ -175,16 +176,20 @@ LLA_Result DP_lla(const LLA_Data& data, bool keep_trace) {
     return lla_result;
 }
 
-
-// irrelevant with LLA
-/*
-double calc_LA(VectorDouble X, VectorDouble Y, VectorDouble Z){
-  //assert X.size() = Y.size() = Z.size() 
-  double sum=0;
-  for(unsigned int i=0; i<X.size(); i++){
-    sum += X[i]*Y[i]*Z[i];
-  }
-  return sum/X.size();
+/* Static calc LA functions */
+double calc_LA(VectorDouble x, VectorDouble y, VectorDouble z) {
+    if (x.size() != y.size() || y.size() != z.size()) {
+        throw std::runtime_error("All input vectors must have the same length");
+    }
+    
+    double sum = 0.0;
+    int n = x.size();
+    
+    for (int i = 0; i < n; i++) {
+        sum += (x[i] * y[i] * z[i]);
+    }
+    
+    return sum / n;
 }
 
 /*
@@ -197,7 +202,9 @@ LLA_Result ST_lla( const LLA_Data& lla_data ) {
   lla_result.score=score;
   return lla_result;
 }
+*/
 
+/*
 LSA_Result DP_rep_lsa( const LSA_Rep_Data& data ){
   LSA_Result lsa_result;
   int max_p[2]={0}; int porn=0;

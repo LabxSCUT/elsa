@@ -1,4 +1,6 @@
 # Use an official Python runtime as a parent image
+# you may also need to change dockerhub mirror to the ustc one in docker desktop settings by adding to daemon.json:
+# { "registry-mirrors": ["https://docker.mirrors.ustc.edu.cn"] }
 FROM python:3.9-slim-buster
 
 # Set environment variables
@@ -25,6 +27,7 @@ RUN apt-get update && apt-get install -y \
     python3-scipy \
     python3-matplotlib \
     python3-pandas \
+    python3-pybind11 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install the package

@@ -38,6 +38,7 @@ The results can be summarized and easily queried for desired analysis.
 from setuptools import setup, find_packages
 from distutils.core import Extension
 from distutils.command import build
+import pybind11
 import os, sys, subprocess
 
 doclines=__doc__.splitlines()
@@ -110,6 +111,20 @@ class my_build(build.build):
         ('build_scripts', build.build.has_scripts),
     ]
 
+# Define the extension module
+ext_modules = [
+    Extension(
+        "lsa._compcore",
+        ["lsa/compcore.cpp", "lsa/compcore_bindings.cpp"],
+        include_dirs=[
+            pybind11.get_include(),
+            "lsa"
+        ],
+        language='c++',
+        extra_compile_args=['-std=c++11']
+    ),
+]
+
 setup(
     name="lsa",
     version="2.0.0",
@@ -130,10 +145,7 @@ setup(
         'matplotlib>=3.3.0',
     ],
     provides=['lsa', 'lla'],
-    ext_modules=[Extension('lsa._compcore',
-                         sources=['lsa/compcore_wrap.cpp', 'lsa/compcore.cpp'],
-                         depends=['lsa/compcore.hpp'],
-                         )],
+    ext_modules=ext_modules,
     py_modules=[
         'lsa.compcore',
         'lsa.lsalib_core',
