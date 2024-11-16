@@ -1,4 +1,4 @@
-#include <vector>
+#include <std::vector>
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
@@ -6,19 +6,19 @@
 #include <limits>
 //#include <numeric>
 
-using namespace std;
+//using namespace std;
 
 //Customized types
-typedef vector<double> VectorDouble;
-typedef vector<VectorDouble> MatrixDouble;
-typedef vector<int> VectorInt;
-typedef vector<VectorInt> MatrixInt;
-//typedef vector<double> VectorDouble;
-//typedef vector<VectorDouble> MatrixDouble;
+typedef std::vector<double> VectorDouble;
+typedef std::vector<VectorDouble> MatrixDouble;
+typedef std::vector<int> VectorInt;
+typedef std::vector<VectorInt> MatrixInt;
+//typedef std::vector<double> VectorDouble;
+//typedef std::vector<VectorDouble> MatrixDouble;
 
 //easy functions
 int test();
-double calc_LA(VectorDouble, VectorDouble, VectorDouble);
+double calc_LA(VectorDouble x, VectorDouble y, VectorDouble z);
 
 //// LSA section
 
@@ -27,20 +27,20 @@ public:
   int max_shift;
   VectorDouble X;
   VectorDouble Y;
-  LSA_Data(){ VectorDouble X; VectorDouble Y; max_shift=std::numeric_limits<int>::infinity(); };
-  LSA_Data(int shift, VectorDouble x, VectorDouble y): max_shift(shift),X(x),Y(y){ };
-  void assign(int, VectorDouble, VectorDouble);
+  LSA_Data(): max_shift=std::numeric_limits<int>::infinity() { }
+  LSA_Data(int shift, VectorDouble x, VectorDouble y): max_shift(shift),X(x),Y(y){ }
+  void assign(int shift, VectorDouble x, VectorDouble y) { max_shift=shift; X=x; Y=y; }
 };
 
 class LSA_Result {
 public:
   double score;
   MatrixInt trace;
-  //LSA_Result();
+  LSA_Result(): score(0.0), trace() { }
   //~LSA_Result();
 };
 
-LSA_Result DP_lsa( const LSA_Data&, bool ); 
+LSA_Result DP_lsa( const LSA_Data& data, bool flag ); 
 
 
 //// LLA and LA data types
@@ -50,8 +50,8 @@ public:
   VectorDouble X;
   VectorDouble Y;
   VectorDouble Z;
-  //LLA_Data(){ VectorDouble X; VectorDouble Y; VectorDouble Z; max_shift=std::numeric_limits<int>::infinity(); };
-  LLA_Data(int shift, VectorDouble x, VectorDouble y, VectorDouble z): max_shift(shift),X(x),Y(y),Z(z){ };
+  LLA_Data() : max_shift=std::numeric_limits<int>::infinity() { }
+  LLA_Data(int shift, VectorDouble x, VectorDouble y, VectorDouble z) : max_shift(shift),X(x),Y(y),Z(z){ }
   //inline int random_shuffle();
 };
 
@@ -60,6 +60,7 @@ class LLA_Result {
 public:
   double score;
   MatrixInt trace;
+  LLA_Result() : score(0.0), trace() { }
 };
 
 /*
