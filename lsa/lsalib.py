@@ -225,6 +225,7 @@ def singleLSA(series1, series2, delayLimit, fTransform, zNormalize, \
   #  quit()
   #print "can get here lsad"
   lsar=DP_lsa(lsad, keepTrace)
+  del lsad
   #print "can get here lsar"
   return lsar
 	
@@ -436,6 +437,9 @@ def permuPvalue(series1, series2, delayLimit, precisionP, \
         zNormalize(fTransform(Y)), timespots, trendThresh)
     lsad.assign(delayLimit, Xz, Yz)
     PP_set[i] = DP_lsa(lsad, False).score
+  
+  # Clean up
+  del lsad
   #PP_set[pvalueMethod]=Smax  #the original test shall not be considerred
   #print "PP_set", PP_set, PP_set >= Smax, np.sum(PP_set>=Smax), float(pvalueMethod)
   if Smax >= 0:
@@ -1038,7 +1042,7 @@ def applyAnalysis(firstData, secondData, onDiag=True, delayLimit=3, minOccur=.5,
         #print "Xz%d="%j, zNormalize(fTransform(Yz))
         #print >>sys.stderr, "can get here?"
       else:
-        LSA_result = singleLSA(Xz, Yz, delayLimit, fTransform, zNormalize, \
+        lsar = singleLSA(Xz, Yz, delayLimit, fTransform, zNormalize, \
           trendThresh, True) #now allowing trend analysis in singleLSA
         #print >>sys.stderr, "can get here?"
         #else:
@@ -1050,11 +1054,11 @@ def applyAnalysis(firstData, secondData, onDiag=True, delayLimit=3, minOccur=.5,
         #  quit()
 
           
-        Smax = LSA_result.score 
+        Smax = lsar.score 
         #if np.isnan(Smax):
         #  print "error" 
         #  quit()
-        Al = len(LSA_result.trace)
+        Al = len(lsar.trace)
         (PCC, P_PCC) = calc_pearsonr(ma_average(Xz, axis=0), ma_average(Yz, axis=0)) 
         # it is two tailed p-value
         (SCC, P_SCC) = calc_spearmanr(ma_average(Xz, axis=0), ma_average(Yz, axis=0)) 
@@ -1093,8 +1097,8 @@ def applyAnalysis(firstData, secondData, onDiag=True, delayLimit=3, minOccur=.5,
             1, PCC, P_PCC,  SPCC, P_SPCC, D_SPCC, \
             SCC, P_SCC, SSCC, P_SSCC, D_SSCC]
         else:
-          (Xs, Ys, Al) = (LSA_result.trace[Al-1][0], \
-            LSA_result.trace[Al-1][1], len(LSA_result.trace))
+          (Xs, Ys, Al) = (lsar.trace[Al-1][0], \
+            lsar.trace[Al-1][1], len(lsar.trace))
           #try:
           #  (Xs, Ys, Al) = (LSA_result.trace[Al-1][0], LSA_result.trace[Al-1][1], len(LSA_result.trace))
           #except IndexError:
@@ -1169,7 +1173,7 @@ def applyAnalysis(firstData, secondData, onDiag=True, delayLimit=3, minOccur=.5,
               SPCC, P_SPCC, D_SPCC, SCC, P_SCC, SSCC, P_SSCC, D_SSCC]
           #END IF AL==0
         #END IF np.all
-        del LSA_result
+        del lsar
 
       if progressive>0 and (ti+1)%progressive == 0: #print every 0:porgressive-1 terms and reset lsaTable and ti
         elapsed_time = time.time() - start_time
