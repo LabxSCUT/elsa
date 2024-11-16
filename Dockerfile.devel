@@ -1,6 +1,9 @@
 # Use an official Python runtime as a parent image
 FROM python:3.9-slim-buster
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim-buster
 
+# Set environment variables
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -16,21 +19,20 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install pip requirements
+RUN apt-get update && apt-get install -y \
+    python3-numpy \
+    python3-scipy \
+    python3-matplotlib \
+    python3-pandas \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy the current directory contents into the container at /app
-#COPY . /app
+# Install the package
+WORKDIR /app
+COPY . /app
+RUN python3 setup.py install
 
-# Install the ELSA package
-#RUN python setup.py install
-
-# Change to the test directory
-#WORKDIR /app/test
-
-# Make test.sh executable
-#RUN chmod +x test.sh
-
-# Run tests when the container launches
-#CMD ["./test.sh"]
+# Change to the test folder and run test.sh
+WORKDIR /app/test
+RUN chmod +x test.sh
+RUN ./test.sh

@@ -47,11 +47,23 @@ doclines=__doc__.splitlines()
 #version_desc = ','.join([lines[1].strip(), lines[0].strip()])
 print("works with python setup.py install or pipx install .", file=sys.stderr)
 
+def get_git_commit_hash():
+    try:
+        # Run git command to get the latest commit hash
+        commit_hash = subprocess.check_output(['git', 'log', '--pretty=format:%h', '-n', '1'],
+                                              stderr=subprocess.DEVNULL).decode().strip()
+    except subprocess.CalledProcessError:
+        # Return an empty string if any exception occurs
+        commit_hash = ""
+
+    return commit_hash
+
 print("testing git availability ...", file=sys.stderr)
 git_on_cmd = """echo 'def main():\\n    print(\\\"{}; @GIT: {}\\\")' > lsa/lsa_version.py""".format(
     open('VERSION.txt').read().strip(),
-    subprocess.check_output(['git', 'log', '--pretty=format:%h', '-n', '1'], 
-                          stderr=subprocess.DEVNULL).decode().strip()
+    get_git_commit_hash()
+    #subprocess.check_output(['git', 'log', '--pretty=format:%h', '-n', '1'], 
+    #                      stderr=subprocess.DEVNULL).decode().strip()
 )
 
 try:
