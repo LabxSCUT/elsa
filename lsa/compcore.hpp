@@ -24,7 +24,11 @@ public:
     LSA_Data() : max_shift(std::numeric_limits<int>::infinity()) { }
     LSA_Data(int shift, VectorDouble x, VectorDouble y) 
         : max_shift(shift), X(x), Y(y) { }
-    void assign(int shift, VectorDouble x, VectorDouble y);
+    void assign(int shift, VectorDouble x, VectorDouble y) {
+        max_shift = shift;
+        X = x;
+        Y = y;
+    }
 };
 
 class LSA_Result {
@@ -46,6 +50,12 @@ public:
     LLA_Data() : max_shift(std::numeric_limits<int>::infinity()) { }
     LLA_Data(int shift, VectorDouble x, VectorDouble y, VectorDouble z)
         : max_shift(shift), X(x), Y(y), Z(z) { }
+    void assign(int shift, VectorDouble x, VectorDouble y, VectorDouble z) {
+        max_shift = shift;
+        X = x;
+        Y = y;
+        Z = z;
+    }
 };
 
 class LLA_Result {

@@ -27,13 +27,13 @@ RUN apt-get update && apt-get install -y \
     python3-scipy \
     python3-matplotlib \
     python3-pandas \
-    python3-pybind11 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install the package
 WORKDIR /app
 COPY . /app
-RUN python3 setup.py install
+RUN pip install pybind11 \
+    && pip install .
 
 # Change to the test folder and run test.sh
 WORKDIR /app/test

@@ -33,3 +33,4 @@ Thumbs.db
 
 # Ignore package manager directories
 node_modules/
+test/ARISA20.theo.lsa

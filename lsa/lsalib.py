@@ -46,38 +46,36 @@
 import csv, sys, os, random, tempfile, time
 import numpy as np
 import numpy.testing
-#import numpy.ma as np.ma
 import scipy as sp
 import scipy.interpolate
 import scipy.stats
 import scipy.linalg
-#Import R through Rpy2
 rpy_import = False
-#try:
-#  import rpy2
-#  import rpy2.rlike.container as rlc
-#  import rpy2.robjects as ro
-#  from rpy2.robjects.numpy2ri import numpy2ri
-#  ro.conversion.py2ri = numpy2ri
-#  r = ro.r
-#  #print '''setwd("%s")''' % os.environ.get('PWD')
-#  r('''setwd("%s")''' % os.environ.get('PWD'))
-#  r('''options(warn=-1)''') 
-#except ImportError:
-#  #print >>sys.stderr, "I am in lsalib.py"
-#  print >>sys.stderr, "IMPORTANT!!!: R and rpy2 are not working on this system"
-#  print >>sys.stderr, "IMPORTANT!!!: All calculations will fallback to scipy"
-#  rpy_import = False
 
-#import lower level resource
 try:
-  #else run as installed
-  from lsa import compcore
-  np.seterr(all='ignore')                             #ignore RuntimeWarning of abs in installed mode
+    # When running as installed package
+    from lsa._compcore import (
+        LSA_Data,      # Container for LSA input data
+        LSA_Result,    # Container for LSA results
+        DP_lsa,        # Main LSA computation function
+        LLA_Data,      # Container for LLA input data
+        LLA_Result,    # Container for LLA results
+        DP_lla,        # Main LLA computation function
+        calc_LA,       # Static LA calculation
+        test           # Test function
+    )
 except ImportError:
-  #try for debug
-  from . import compcore
-  np.seterr(all='warn')
+    # When running in development mode
+    from ._compcore import (
+        LSA_Data,
+        LSA_Result,
+        DP_lsa,
+        LLA_Data,
+        LLA_Result,
+        DP_lla,
+        calc_LA,
+        test
+    )
 
 
 """Synopsis:
@@ -219,16 +217,15 @@ def singleLSA(series1, series2, delayLimit, fTransform, zNormalize, \
 
   #print "x=", xSeries
   #print "y=", ySeries
-  lsad=compcore.LSA_Data(delayLimit, xSeries, ySeries)
+  lsad=LSA_Data(delayLimit, xSeries, ySeries)
   #except NotImplementedError:
   #  print series1, series1.mask, series2, series2.mask
   #  print fTransform, fTransform(series1), fTransform(series1).mask, fTransform(series2), fTransform(series2).mask
   #  print zNormalize, zNormalize(fTransform(series1)), zNormalize(fTransform(series1)).mask, zNormalize(fTransform(series2)), zNormalize(fTransform(series2)).mask
   #  quit()
   #print "can get here lsad"
-  lsar=compcore.DP_lsa(lsad, keepTrace)
+  lsar=DP_lsa(lsad, keepTrace)
   #print "can get here lsar"
-  del lsad
   return lsar
 	
 def sample_wr(population, k):
@@ -293,7 +290,7 @@ def bootstrapCI(series1, series2, Smax, delayLimit, bootCI, bootNum, \
     lengthSeries = timespots - 1
 
   ###print "------Bootstrapping------"
-  lsad = compcore.LSA_Data()
+  lsad = LSA_Data()
   BS_set = np.zeros(bootNum, dtype='float')
   for i in range(0, bootNum):
     if trendThresh == None:
@@ -315,7 +312,7 @@ def bootstrapCI(series1, series2, Smax, delayLimit, bootCI, bootNum, \
     #print "Xb=", Xb
     #print "Yb=", Yb
     lsad.assign( delayLimit, Xb, Yb )
-    BS_set[i] = compcore.DP_lsa(lsad, False).score
+    BS_set[i] = DP_lsa(lsad, False).score
   BS_set.sort()                                 #from smallest to largest
   BS_mean = np.mean(BS_set)
   #print np.histogram(BS_set, bins=10)
@@ -421,7 +418,7 @@ def permuPvalue(series1, series2, delayLimit, precisionP, \
   if trendThresh != None:
     lengthSeries = timespots - 1
 
-  lsad = compcore.LSA_Data()
+  lsad = LSA_Data()
   PP_set = np.zeros(precisionP, dtype='float')
   if trendThresh == None:
     Xz = zNormalize(fTransform(series1))
@@ -437,8 +434,8 @@ def permuPvalue(series1, series2, delayLimit, precisionP, \
     else:
       Yz = ji_calc_trend(\
         zNormalize(fTransform(Y)), timespots, trendThresh)
-    lsad.assign( delayLimit, Xz, Yz)
-    PP_set[i] = compcore.DP_lsa(lsad, False).score
+    lsad.assign(delayLimit, Xz, Yz)
+    PP_set[i] = DP_lsa(lsad, False).score
   #PP_set[pvalueMethod]=Smax  #the original test shall not be considerred
   #print "PP_set", PP_set, PP_set >= Smax, np.sum(PP_set>=Smax), float(pvalueMethod)
   if Smax >= 0:

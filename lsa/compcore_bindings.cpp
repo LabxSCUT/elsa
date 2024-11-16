@@ -44,7 +44,24 @@ PYBIND11_MODULE(_compcore, m) {
         // Expose member variables for direct access from Python
         .def_readwrite("max_shift", &LSA_Data::max_shift, "Maximum allowed delay between series")
         .def_readwrite("X", &LSA_Data::X, "First time series data")
-        .def_readwrite("Y", &LSA_Data::Y, "Second time series data");
+        .def_readwrite("Y", &LSA_Data::Y, "Second time series data")
+        .def("assign", &LSA_Data::assign,
+             py::arg("max_shift"),
+             py::arg("X"),
+             py::arg("Y"),
+             R"pbdoc(
+             Assign new values to the LSA_Data object.
+
+             Args:
+                 max_shift (int): Maximum allowed delay between series
+                 X (list): First time series data
+                 Y (list): Second time series data
+
+             Example:
+                 >>> lsa_data = LSA_Data()
+                 >>> lsa_data.assign(2, [1.0, 2.0, 3.0], [2.0, 3.0, 4.0])
+             )pbdoc"
+        );
 
     // Bind LSA_Result class - holds results of LSA computation
     py::class_<LSA_Result>(m, "LSA_Result")
@@ -81,7 +98,26 @@ PYBIND11_MODULE(_compcore, m) {
         .def_readwrite("max_shift", &LLA_Data::max_shift, "Maximum allowed delay between series")
         .def_readwrite("X", &LLA_Data::X, "First time series data")
         .def_readwrite("Y", &LLA_Data::Y, "Second time series data")
-        .def_readwrite("Z", &LLA_Data::Z, "Third time series data (mediator)");
+        .def_readwrite("Z", &LLA_Data::Z, "Third time series data (mediator)")
+        .def("assign", &LLA_Data::assign,
+             py::arg("max_shift"),
+             py::arg("X"),
+             py::arg("Y"),
+             py::arg("Z"),
+             R"pbdoc(
+             Assign new values to the LLA_Data object.
+
+             Args:
+                 max_shift (int): Maximum allowed delay between series
+                 X (list): First time series data
+                 Y (list): Second time series data
+                 Z (list): Third time series data (mediator)
+
+             Example:
+                 >>> lla_data = LLA_Data()
+                 >>> lla_data.assign(2, [1.0, 2.0], [2.0, 3.0], [3.0, 4.0])
+             )pbdoc"
+        );
 
     // Bind LLA_Result class - holds results of LLA computation
     py::class_<LLA_Result>(m, "LLA_Result")

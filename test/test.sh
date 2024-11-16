@@ -1,6 +1,6 @@
 #activate elsa virtual v
 #conda activate elsa 
-python -c "from lsa import lsa_version; lsa_version.main()"
+python3 -c "from lsa import lsa_version; lsa_version.main()"
 
 # Current LSA Tests
 echo "ELSA Tests"

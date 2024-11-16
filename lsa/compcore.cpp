@@ -8,11 +8,12 @@ int test(){
 }
 
 /* LSA section */
+/*
 void LSA_Data::assign(int shift, VectorDouble x, VectorDouble y){
   max_shift = shift;
   X.assign(x.begin(),x.end());
   Y.assign(y.begin(),y.end());
-}
+}*/
 
 LSA_Result DP_lsa( const LSA_Data& data, bool keep_trace ){  //python does not support default value
   LSA_Result lsa_result;
