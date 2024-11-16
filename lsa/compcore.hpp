@@ -1,4 +1,4 @@
-#include <std::vector>
+#include <vector>
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
