@@ -31,3 +31,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Install the ELSA package
 RUN pip install -e .
+
+# Specify the default command to start a bash shell
+CMD ["/bin/bash"]
