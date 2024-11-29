@@ -195,165 +195,123 @@ def LApermuPvalue(series1, series2, series3, pvalueMethod, LA_score, fTransform,
 
 # ab initio local liquid association analysis functions ###  
 
+def transform_series(series, fTransform, zNormalize):
+    """Transform a single time series while preserving masked array structure."""
+    # Ensure input is masked array
+    if not isinstance(series, np.ma.MaskedArray):
+        series = np.ma.array(series)
+    
+    # Apply transform while preserving mask
+    transformed = fTransform(series)
+    if not isinstance(transformed, np.ma.MaskedArray):
+        transformed = np.ma.array(transformed, mask=series.mask)
+    
+    # Apply normalization while preserving mask
+    normalized = zNormalize(transformed)
+    if not isinstance(normalized, np.ma.MaskedArray):
+        normalized = np.ma.array(normalized, mask=series.mask)
+    
+    return normalized
+
 def applyLLAnalysis(cleanData, factorLabels, delayLimit=3, bootCI=.95, bootNum=1000, minOccur=.50,
                    pvalueMethod="perm", precision=1000, fillMethod='linear', normMethod='pnz',
                    fTransform=lsalib.simpleAverage, zNormalize=lsalib.noZeroNormalize, 
                    resultFile=None, qvalue_func=lsalib.storeyQvalue):
-    """Apply Liquid Local Analysis to input data using DP_LLA algorithm.
-    
-    Args:
-        inputData: numpy array of shape (factors, replicates, timepoints)
-        factorLabels: list of factor names
-        delayLimit: maximum time delay to consider (default 3)
-        bootCI: confidence interval for bootstrap (default 0.95)
-        bootNum: number of bootstrap iterations (default 1000)
-        minOccur: minimum occurrence threshold (default 0.50)
-        pvalueMethod: method for p-value calculation (default "perm")
-        precision: precision for p-value calculation (default 1000)
-        fillMethod: method to fill missing values (default 'linear')
-        normMethod: method to normalize data (default 'pnz')
-        fTransform: function to transform replicates (default simpleAverage)
-        zNormalize: function to normalize data (default noZeroNormalize)
-        resultFile: file handle to write results (default None)
-        qvalue_func: function to calculate q-values (default storeyQvalue)
-    """
+    """Apply Local Liquid Association analysis to input data."""
     col_labels = ['X','Y','Z','LA','lowCI','upCI','P','Q','Xi','Yi','Zi','Delay']
     print("\t".join(col_labels), file=resultFile)
-
+    
     inputFactorNum = cleanData.shape[0]
     inputRepNum = cleanData.shape[1]
     inputSpotNum = cleanData.shape[2]
     
-    # Track computed triplets to avoid redundancy
-    triplet = np.array([False]*inputFactorNum**3, dtype='bool')
-    triplet.shape = (inputFactorNum, inputFactorNum, inputFactorNum)
-    
-    # Initialize results storage
     laTable = []
     pvalues = []
     
-    # Process each possible triplet
-    for Xi in range(inputFactorNum):
-        for Yi in range(Xi+1, inputFactorNum):  # Only upper triangle to avoid duplicates
-            for Zi in range(inputFactorNum):
-                # Skip invalid combinations
-                if Xi == Yi or Xi == Zi or Zi == Yi:
-                    continue
-                if triplet[Xi,Yi,Zi] or triplet[Xi,Zi,Yi] or triplet[Zi,Xi,Yi] or triplet[Zi,Yi,Xi] or triplet[Yi,Xi,Zi] or triplet[Yi,Zi,Xi]:
-                    continue
-                    
-                triplet[Xi,Yi,Zi] = True
-                
-                # Get data for X, Y, and Z
-                Xo = np.ma.masked_invalid(inputData[Xi], copy=True)
-                Yo = np.ma.masked_invalid(inputData[Yi], copy=True)
-                Zo = np.ma.masked_invalid(inputData[Zi], copy=True)
-                
-                # Check minimum occurrence criteria
-                Xo_valid = np.sum(~np.isnan(lsalib.ma_average(Xo)))/float(inputSpotNum) >= minOccur
-                Yo_valid = np.sum(~np.isnan(lsalib.ma_average(Yo)))/float(inputSpotNum) >= minOccur
-                Zo_valid = np.sum(~np.isnan(lsalib.ma_average(Zo)))/float(inputSpotNum) >= minOccur
-                
-                if not (Xo_valid and Yo_valid and Zo_valid):
-                    continue
-                if np.all(Xo.mask) or np.all(Yo.mask) or np.all(Zo.mask):
-                    continue
-                
-                # Apply transforms and normalization
-                X = zNormalize(fTransform(Xo)) # Xo is matrix, X is vector
-                Y = zNormalize(fTransform(Yo)) # Yo is matrix, Y is vector
-                Z = zNormalize(fTransform(Zo))
-                
-                # Call DP_LLA from compcore
-                try:
-                    # Convert numpy arrays to lists for PyBind11
-                    X_list = X.tolist()
-                    Y_list = Y.tolist()
-                    Z_list = Z.tolist()
-                    
-                    # Create LLA_Data object using new PyBind11 constructor
-                    lla_data = compcore.LLA_Data(delayLimit, X_list, Y_list, Z_list)
-                    
-                    # Call DP_lla with the new object
-                    lla_result = compcore.DP_lla(lla_data, True)  # True to keep trace
-                    
-                    # Extract results
-                    LA_score = lla_result.score
-                    trace = lla_result.trace
-                except Exception as e:
-                    print(f"Error in DP_lla computation: {str(e)}", file=sys.stderr)
-                    continue
-                
-                # Calculate p-value
-                if isinstance(pvalueMethod, str) and pvalueMethod == "perm":
-                    Xp = np.ma.array(X, copy=True)
-                    Yp = np.ma.array(Y, copy=True)
-                    Zp = np.ma.array(Z, copy=True)
-                    laP = LApermuPvalue(Xp, Yp, Zp, precision, np.abs(LA_score), 
-                                      fTransform, zNormalize)
-                else:
-                    precision = abs(int(pvalueMethod))
-                    Xp = np.ma.array(X, copy=True)
-                    Yp = np.ma.array(Y, copy=True)
-                    Zp = np.ma.array(Z, copy=True)
-                    laP = LApermuPvalue(Xp, Yp, Zp, precision, np.abs(LA_score),
-                                      fTransform, zNormalize)
-                
-                pvalues.append(laP)
-                
-                # Calculate bootstrap confidence intervals if requested
-                if bootNum > 0:
-                    Xb = np.ma.array(Xo, copy=True)
-                    Yb = np.ma.array(Yo, copy=True)
-                    Zb = np.ma.array(Zo, copy=True)
-                    LA_score, Sl, Su = LAbootstrapCI(Xb, Yb, Zb, LA_score, bootCI, bootNum,
-                                                   fTransform, zNormalize)
-                else:
-                    Sl, Su = LA_score, LA_score
-               
-                trace_length = getLLATraceLength(X, Y, Z, delayLimit)
-                best_delay = trace_length - 1 if trace_length > 0 else 0
-                laTable.append([Xi, Yi, Zi, LA_score, Sl, Su, laP, best_delay])
+    # Track processed triplets to avoid redundancy
+    processed = set()
     
-    # Calculate q-values
+    for Xi in range(inputFactorNum):
+        for Yi in range(Xi + 1, inputFactorNum):
+            for Zi in range(Yi + 1, inputFactorNum):
+                triplet = tuple(sorted([Xi, Yi, Zi]))
+                if triplet in processed:
+                    continue
+                processed.add(triplet)
+                
+                try:
+                    # Transform data while preserving masked array structure
+                    X = transform_series(cleanData[Xi], fTransform, zNormalize)
+                    Y = transform_series(cleanData[Yi], fTransform, zNormalize)
+                    Z = transform_series(cleanData[Zi], fTransform, zNormalize)
+                    
+                    # Check minimum occurrence criteria
+                    if not all(np.sum(~np.ma.getmask(s))/float(inputSpotNum) >= minOccur 
+                             for s in [X, Y, Z]):
+                        continue
+                    
+                    # Calculate LA score and statistics
+                    lla_data = compcore.LLA_Data(delayLimit, X, Y, Z)
+                    lla_result = compcore.DP_lla(lla_data)
+                    
+                    # Calculate p-value
+                    pvalue = (LLApermuPvalue(X, Y, Z, delayLimit, precision, lla_result.score) 
+                            if pvalueMethod == "perm" else pvalueMethod)
+                    pvalues.append(pvalue)
+                    
+                    # Calculate bootstrap CI if requested
+                    if bootNum > 0:
+                        la_score, lowCI, upCI = LLAbootstrapCI(X, Y, Z, lla_result.score, 
+                                                           delayLimit, bootCI, bootNum)
+                    else:
+                        la_score = lowCI = upCI = lla_result.score
+                    
+                    laTable.append([Xi, Yi, Zi, la_score, lowCI, upCI, pvalue])
+                    
+                except Exception as e:
+                    print(f"Error processing triplet ({Xi},{Yi},{Zi}): {str(e)}", file=sys.stderr)
+                    continue
+    
+    # Calculate q-values and write results
     if pvalues:
         qvalues = qvalue_func(np.array(pvalues))
-        
-        # Add q-values and 1-based indices to results
-        for k in range(len(qvalues)):
-            laTable[k] = laTable[k][:6] + [qvalues[k], laTable[k][0]+1, laTable[k][1]+1, laTable[k][2]+1, laTable[k][7]]
-        
-        # Write results
+        for k, row in enumerate(laTable):
+            laTable[k] = row[:7] + [qvalues[k]] + [x+1 for x in row[:3]] + [0]
+            
         for row in laTable:
             print("\t".join(['%s']*len(col_labels)) % 
                   tuple([factorLabels[row[0]], factorLabels[row[1]], factorLabels[row[2]]] + 
-                        [f"{v:.{disp_decimal}f}" if isinstance(v, float) else v for v in row[3:]]), 
+                        [f"{v:.8f}" if isinstance(v, float) else v for v in row[3:]]), 
                   file=resultFile)
     else:
         print("No valid triplets found for analysis", file=sys.stderr)
 
-def LLApermuPvalue(X, Y, Z, delayLimit, precisionP, LA_score, fTransform, zNormalize):
-    """
-    Perform permutation test for Local Liquid Association.
-
+def LLApermuPvalue(X, Y, Z, delayLimit, precisionP, LA_score):
+    """Compute permutation-based p-value for LLA score.
+    
     Args:
-        X, Y, Z (np.array): Sequence data for X, Y, and Z.
-        precisionP (int): Number of permutations.
-        LA_score (float): Observed LA score.
-        fTransform (function): Function to transform data.
-        zNormalize (function): Function to normalize data.
-
+        X, Y, Z: Masked arrays containing time series data
+        delayLimit: Maximum time delay to consider
+        precisionP: Number of permutations
+        LA_score: Observed LA score
+        
     Returns:
-        float: p-value
+        float: Two-tailed p-value
     """
     PP_set = np.zeros(precisionP, dtype='float')
-    Xz = zNormalize(fTransform(X))
-    Yz = zNormalize(fTransform(Y))
-    Zz = zNormalize(fTransform(Z))
+    
+    # Ensure inputs are masked arrays
+    X = np.ma.array(X) if not isinstance(X, np.ma.MaskedArray) else X
+    Y = np.ma.array(Y) if not isinstance(Y, np.ma.MaskedArray) else Y
+    Z = np.ma.array(Z) if not isinstance(Z, np.ma.MaskedArray) else Z
 
     for i in range(precisionP):
-        np.random.shuffle(Zz.T)  # Shuffle Z in place
-        lla_data = compcore.LLA_Data(delayLimit, Xz, Yz, Zz)
+        # Shuffle Z while preserving mask
+        Zp = np.ma.array(Z)
+        idx = np.random.permutation(len(Z))
+        Zp = Zp[idx]
+        
+        lla_data = compcore.LLA_Data(delayLimit, X, Y, Zp)
         PP_set[i] = compcore.DP_lla(lla_data).score
 
     if LA_score >= 0:
@@ -362,58 +320,45 @@ def LLApermuPvalue(X, Y, Z, delayLimit, precisionP, LA_score, fTransform, zNorma
         P_two_tail = np.sum(-np.abs(PP_set) <= LA_score) / float(precisionP)
     return P_two_tail
 
-def LLAbootstrapCI(X, Y, Z, LA_score, delayLimit, bootCI, bootNum, fTransform, zNormalize):
-    """
-    Perform bootstrap CI estimation for Liquid Association.
-
+def LLAbootstrapCI(X, Y, Z, LA_score, delayLimit, bootCI, bootNum):
+    """Compute bootstrap confidence intervals for LLA score.
+    
     Args:
-        X, Y, Z (np.array): Sequence data for X, Y, and Z.
-        LA_score (float): Initial LA score.
-        bootCI (float): Confidence interval size.
-        bootNum (int): Number of bootstraps.
-        fTransform (function): Function to transform data.
-        zNormalize (function): Function to normalize data.
-
+        X, Y, Z: Masked arrays containing time series data
+        LA_score: Original LA score
+        delayLimit: Maximum time delay
+        bootCI: Confidence interval (e.g., 0.95)
+        bootNum: Number of bootstrap iterations
+        
     Returns:
-        tuple: (LA_score, lower CI, upper CI)
+        tuple: (mean LA score, lower CI, upper CI)
     """
-    if X.shape[0] == 1:
-        return (LA_score, LA_score, LA_score)
-
+    if len(X) <= 1:  # Not enough data points
+        return LA_score, LA_score, LA_score
+        
     BS_set = np.zeros(bootNum, dtype='float')
+    
+    # Ensure inputs are masked arrays
+    X = np.ma.array(X) if not isinstance(X, np.ma.MaskedArray) else X
+    Y = np.ma.array(Y) if not isinstance(Y, np.ma.MaskedArray) else Y
+    Z = np.ma.array(Z) if not isinstance(Z, np.ma.MaskedArray) else Z
+    
     for i in range(bootNum):
-        Xb = zNormalize(fTransform(np.ma.array([np.random.choice(X, size=X.shape[0], replace=True) for _ in range(X.shape[1])]).T))
-        Yb = zNormalize(fTransform(np.ma.array([np.random.choice(Y, size=Y.shape[0], replace=True) for _ in range(Y.shape[1])]).T))
-        Zb = zNormalize(fTransform(np.ma.array([np.random.choice(Z, size=Z.shape[0], replace=True) for _ in range(Z.shape[1])]).T))
+        # Bootstrap sampling with replacement
+        idx = np.random.choice(len(X), size=len(X), replace=True)
+        Xb = X[idx]
+        Yb = Y[idx]
+        Zb = Z[idx]
         
         lla_data = compcore.LLA_Data(delayLimit, Xb, Yb, Zb)
         BS_set[i] = compcore.DP_lla(lla_data).score
-
+        
     BS_set.sort()
-    a1 = (1 - bootCI) / 2.0
-    a2 = bootCI + (1 - bootCI) / 2.0
-    return (LA_score, BS_set[int(np.floor(bootNum * a1))], BS_set[int(np.ceil(bootNum * a2))])
-
-def getLLATraceLength(X, Y, Z, delayLimit):
-    """
-    Get the length of the optimal alignment trace from DP_lla algorithm.
+    BS_mean = np.mean(BS_set)
     
-    Args:
-        X, Y, Z (np.array): Input sequences
-        delayLimit (int): Maximum allowed delay between sequences
-        
-    Returns:
-        int: Length of the optimal alignment trace
-    """
-    try:
-        # Create LLA_Data object
-        lla_data = compcore.LLA_Data(delayLimit, X, Y, Z)
-        
-        # Run DP_lla with keep_trace=True to ensure trace is computed
-        lla_result = compcore.DP_lla(lla_data, True)
-        
-        # Return the length of the trace vector
-        return len(lla_result.trace)
-    except Exception as e:
-        print(f"Error getting trace length: {str(e)}", file=sys.stderr)
-        return 0
+    # Calculate CI indices
+    alpha = 1 - bootCI
+    lower_idx = int(np.floor(bootNum * (alpha/2)))
+    upper_idx = int(np.ceil(bootNum * (1 - alpha/2))) - 1
+    
+    return BS_mean, BS_set[lower_idx], BS_set[upper_idx]

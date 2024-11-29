@@ -56,7 +56,46 @@ except ImportError:
         from lsalib import fillMissing, ma_average, percentileZNormalize
         import llalib
 
+def validate_input_dimensions(data, repNum, spotNum):
+    """Validate input data dimensions and format."""
+    if data is None or len(data.shape) != 2:
+        raise ValueError(f"Invalid input data shape: {data.shape if data is not None else None}")
+        
+    expected_cols = spotNum * repNum
+    if data.shape[1] != expected_cols:
+        raise ValueError(f"Data has {data.shape[1]} columns but expected {expected_cols} "
+                        f"(spotNum={spotNum} × repNum={repNum})")
+
+def transform_data(data, fTransform, zNormalize):
+    """Transform data while preserving masked array structure.
+    
+    Args:
+        data: numpy.ma.MaskedArray input
+        fTransform: transform function to apply
+        zNormalize: normalization function to apply
+        
+    Returns:
+        transformed numpy.ma.MaskedArray
+    """
+    # Ensure input is masked array
+    if not isinstance(data, np.ma.MaskedArray):
+        data = np.ma.array(data)
+        
+    # Apply transform while preserving mask
+    transformed = fTransform(data)
+    if not isinstance(transformed, np.ma.MaskedArray):
+        transformed = np.ma.array(transformed, mask=data.mask)
+        
+    # Apply normalization while preserving mask
+    normalized = zNormalize(transformed)
+    if not isinstance(normalized, np.ma.MaskedArray):
+        normalized = np.ma.array(normalized, mask=data.mask)
+        
+    return normalized
+
 def main():
+    start_time = time.time()
+    
     __script__ = "lla_compute"
     version_desc = lsalib.safeCmd('lsa_version')
     version_print = "%s (rev: %s) - copyright Li Charlie Xia, lcxia@scut.edu.cn" \
@@ -108,65 +147,54 @@ def main():
                                  args.spotNum, args.bootNum, args.transFunc,
                                  args.normMethod, args.precision))
 
-    # Assign transform function
-    if args.transFunc == 'SD':
-        fTransform = lsalib.sdAverage
-    elif args.transFunc == 'Med':
-        fTransform = lsalib.simpleMedian
-    elif args.transFunc == 'MAD':
-        fTransform = lsalib.madMedian
-    else:
-        fTransform = lsalib.simpleAverage
-
-    # Check transform function compatibility
-    if args.repNum < 5 and args.transFunc == 'SD':
-        print("Not enough replicates for SD-weighted averaging, using simpleAverage", file=sys.stderr)
-        fTransform = lsalib.simpleAverage
-
-    if args.repNum < 5 and args.transFunc == 'MAD':
-        print("Not enough replicates for MAD, using simpleMedian", file=sys.stderr)
-        fTransform = lsalib.simpleMedian
-
-    # Assign normalization function
-    if args.normMethod == 'none':
-        zNormalize = lsalib.noneNormalize
-    elif args.normMethod == 'percentile':
-        zNormalize = lsalib.percentileNormalize
-    elif args.normMethod == 'pnz':
-        zNormalize = lsalib.percentileZNormalize
-    else:
-        zNormalize = lsalib.noZeroNormalize
-
-    # Read and process input data
     try:
+        # Map transformation function names to actual functions
+        transform_funcs = {
+            'simple': lsalib.simpleAverage,
+            'SD': lsalib.sdAverage,
+            'Med': lsalib.simpleMedian,
+            'MAD': lsalib.madMedian
+        }
+        
+        normalize_funcs = {
+            'none': lsalib.noneNormalize,
+            'percentile': lsalib.percentileNormalize,
+            'pnz': lsalib.percentileZNormalize
+        }
+        
+        # Get the appropriate functions based on args
+        fTransform = transform_funcs.get(args.transFunc)
+        if fTransform is None:
+            raise ValueError(f"Invalid transform function: {args.transFunc}")
+            
+        zNormalize = normalize_funcs.get(args.normMethod)
+        if zNormalize is None:
+            raise ValueError(f"Invalid normalization method: {args.normMethod}")
+
+        # Read and validate input data
         firstData = np.genfromtxt(args.dataFile, comments='#', delimiter='\t',
                                missing_values=['na','','NA'],
                                filling_values=np.nan,
-                               usecols=list(range(1, args.spotNum*args.repNum+1)),
-                               dtype=float)
+                               usecols=list(range(1, args.spotNum*args.repNum+1)))
+        
+        validate_input_dimensions(firstData, args.repNum, args.spotNum)
+        
+        # Read factor labels
         args.dataFile.seek(0)
         factorLabels = np.genfromtxt(args.dataFile, comments='#', delimiter='\t',
                                   usecols=[0], dtype=str).tolist()
-    except Exception as e:
-        print(f"Error reading data file: {str(e)}", file=sys.stderr)
-        print("Please check input format:", file=sys.stderr)
-        print("- Tab delimited text file", file=sys.stderr)
-        print("- First row starts with '#' as header", file=sys.stderr)
-        print("- First column contains factor labels", file=sys.stderr)
-        print(f"- {args.spotNum * args.repNum} numeric columns expected", file=sys.stderr)
-        sys.exit(1)
-
-    # Reshape and clean data
-    factorNum = firstData.shape[0]
-    cleanData = np.zeros((factorNum, args.repNum, args.spotNum), dtype='float')
-    for i in range(factorNum):
-        for j in range(args.repNum):
-            cleanData[i,j] = firstData[i][j::args.repNum]
-            cleanData[i,j] = fillMissing(cleanData[i,j], args.fillMethod)
-
-    # Run analysis
-    start_time = time.time()
-    try:
+        
+        factorNum = firstData.shape[0]
+        
+        # Create masked array and reshape
+        cleanData = np.ma.zeros((factorNum, args.repNum, args.spotNum), dtype='float')
+        for i in range(factorNum):
+            for j in range(args.repNum):
+                series = firstData[i][j::args.repNum]
+                filled = fillMissing(series, args.fillMethod)
+                cleanData[i,j] = np.ma.array(filled, mask=np.isnan(filled))
+        
+        # Run analysis with transformed data and specified functions
         llalib.applyLLAnalysis(cleanData, factorLabels,
                             delayLimit=args.delayLimit,
                             bootCI=0.95,
@@ -179,6 +207,7 @@ def main():
                             fTransform=fTransform,
                             zNormalize=zNormalize,
                             resultFile=args.resultFile)
+                            
     except Exception as e:
         print(f"Error during analysis: {str(e)}", file=sys.stderr)
         sys.exit(1)
